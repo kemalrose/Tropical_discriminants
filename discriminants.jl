@@ -34,7 +34,7 @@ function tropicalized_discriminant(A)
     A = Matrix{Int64}(A)
     B = Matrix{Int64}(B)
 
-    matroid = Polymake.matroid.Matroid(VECTORS= B)
+    matroid = Polymake.matroid.Matroid(VECTORS = B)
     ΣB = Polymake.tropical.matroid_fan{min}(matroid)
 
     max_cones = []
