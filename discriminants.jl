@@ -3,6 +3,10 @@
 using Oscar, LinearAlgebra, HomotopyContinuation
 
 
+
+
+
+
 function rk_one_matrices(n::Int)
     A = zero_matrix(ZZ,2n,n^2)
     column_index  = 0
@@ -73,6 +77,79 @@ end
 S = MatrixSpace(ZZ, 2, 3)
 #A = [1 0 2 1; 0 1 -1 0]
 A = [0 1 0 1 2 1; 0 0 1 1 1 2; 1 1 1 1 1 1]
+
+
+
+
+A = [
+1 1 1 1 1 1;
+0 1 2 0 1 0;
+0 0 0 1 1 2
+]
+n, m = size(A)
+S = MatrixSpace(ZZ, n, m)
+B1 = nullspace(S(A))[2]
+B1 = Matrix{Int64}(B1)
+A * B1
+matroid1 = Polymake.matroid.Matroid(VECTORS = B1)
+ΣB1 = Polymake.tropical.matroid_fan{min}(matroid1)
+
+B2 = [1 -2 1 0 0 0;
+1 -1 0 -1 1 0;
+1 0 0 -2 0 1]'
+matroid2 = Polymake.matroid.Matroid(VECTORS = B2)
+ΣB2 = Polymake.tropical.matroid_fan{min}(matroid2)
+
+
+
+
+
+
+S = MatrixSpace(QQ,6,6)
+U = MatrixSpace(QQ,6,1)
+
+maxpols = ΣB.MAXIMAL_POLYTOPES
+
+E = Matrix{Int64}(I, 6,6)
+
+mlist = []
+w = rand(-1000:1000,6)
+w = U(w)
+
+for k = 1:100
+    w = rand(-1000:1000,6)
+    w = U(w)
+    m = []
+    for i = 1:6
+        mi = 0
+        for j = 1:size(maxpols,1)
+            C = [ΣB.RAYS[findall(ℓ->ℓ,maxpols[j,:])[1:end-1],2:end];A;-E[i,:]']
+            C = transpose(C)
+            C = convert(Array{Int64,2},C)
+            #dC = Int64(det(C))
+            dC = det(S(C))
+            #println("det i = $i, j = $j: $(dC)")
+            if dC != 0
+                x = Oscar.solve(S(C),w)
+                println(x)
+                if prod([x[i] for i = 1:2].>0) == 1 && x[6] > 0
+                    mi += (abs(dC))
+                end
+            end
+        end
+        push!(m,mi)
+    end
+    println(m)
+    mlist = push!(mlist,m)
+    mlist = unique!(mlist)
+end
+mlist
+
+
+
+
+
+
 
 
 ω = [12, 43, 22, 1, 6, 2]
