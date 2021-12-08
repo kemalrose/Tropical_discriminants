@@ -77,7 +77,6 @@ maxpols = ΣB.MAXIMAL_POLYTOPES
 
 S = MatrixSpace(QQ, m, m)
 U = MatrixSpace(QQ,m,1)
-
 E = Matrix{Int64}(I, m,m)
 
 
