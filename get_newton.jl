@@ -40,8 +40,7 @@ function getV(u)
     P = convex_hull([hcat(V_0...)'; [-1 0; 0 -1]])
     verts  = [Vector{Int64}(v) for v in vertices(P)]
     inner_prod  = [ (u' * v) for v in verts ]
-    index  = argmax(inner_prod)
-    verts[index]
+    verts[argmax(inner_prod)]
 end
 
 
