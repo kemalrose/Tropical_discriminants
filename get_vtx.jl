@@ -3,7 +3,7 @@
 
 
 
-function getConeData(ΣB)
+function getConeData(A, ΣB)
     n = length(ΣB.RAYS[1,:])-1
     maxpols = ΣB.MAXIMAL_POLYTOPES
     Ssq = MatrixSpace(QQ, n, n)

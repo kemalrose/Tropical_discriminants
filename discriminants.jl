@@ -6,13 +6,6 @@ using Oscar, LinearAlgebra, HomotopyContinuation
 
 
 
-function ishomogeneous(A)
-    (n, m) = size(A)
-    T = eltype(A)
-    v = ones(Int64, m)
-    rank(A) == rank([A; transpose(v)])
-end
-
 function tropicalized_discriminant(A)
     #if ! ishomogeneous(A)
     #    error("Not a homogeneous toric variety.")
