@@ -7,25 +7,65 @@ A = [1 1 1 1 1 1;
 0 1 2 0 1 0;
 0 0 0 1 1 2]
 
-n, m = size(A)
-S = MatrixSpace(ZZ, n, m)
+d, n = size(A)
+S = MatrixSpace(ZZ, d, n)
 B = nullspace(S(A))[2]
 S,U,V = snf_with_transform(B)
-Π = Matrix(U[1:m-n, :])
-U_inv  = Matrix(inv(U))
-Ξ = U_inv[:,1:m-n]
-
+Π = Matrix{Int64}(U[1:n-d, :])
 A = Matrix{Int64}(A)
 B = Matrix{Int64}(B)
+U_inv  = Matrix{Int64}(inv(U))
+
+v_0, vtcs, fcts, Pol = newton_pol(A,B,Π)
+L_pts_proj = lattice_points(Pol)
+mons = [ U_inv * [v ; zeros(n-d)] + v_0 for v in Vector{Int64}.(L_pts_proj)]
+mons = [ [m.num for m in mon] for mon in mons]
+
+pts = [Horn_param(A,B,randn(F64,n-d),randn(F64,d)) for j = 1:50]
+pts_proj = [[prod(p.^Π[i,:]) for i in 1:n-d] for p in pts]
+L_points = Vector{Int64}.(L_points)
+
+V = get_Vdm(pts, mons)
+coeff = nullspace(V)
+svd(V)
+
+
+
+function Horn_param(A, B, v, λ)
+    φλ = [prod(λ.^A[:,i]) for i in 1:n]
+    φλ.*(B*v)
+end
+
+function get_Vdm(pts, mons)
+    V = zeros(Complex{Float64}, (length(pts), length(mons)))
+    for i in 1:length(pts)
+        V[i, :] = [prod(pts[i].^mon) for mon in mons]
+        V[i, :] = V[i, :]/norm(V[i, :])
+    end
+    V
+end
+
+function interpolate_discr(A)
+    B =
+    P =
+    mons = lattice_points(P)
+
+    n_pts = length(mons) * 2
+
+    V
+end
 
 
 
 
+x = pts[1]
+det([2*x[1] x[2] x[4]; x[2] 2*x[3] x[5]; x[4] x[5] 2*x[6]])
 
-matroid = Polymake.matroid.Matroid(VECTORS = B)
-ΣB = Polymake.tropical.matroid_fan{min}(matroid)
-#ΣB = Polymake.tropical.matroid_fan_from_flats{min}(matroid)
-Γ, dets, RR, Fσ = getConeData(A, ΣB)
+for x in pts
+    println(abs(det([2*x[1] x[2] x[4]; x[2] 2*x[3] x[5]; x[4] x[5] 2*x[6]])
+))
+end
+
 
 
 
@@ -71,10 +111,6 @@ verts_proj = vertices(P_proj)
 
 
 
-
-
-
-
 V_0 = [[1 ;1], [1; 0], [0; 1]]
 function getV(u)
     P = convex_hull([hcat(V_0...)'; [-1 0; 0 -1]])
@@ -82,12 +118,6 @@ function getV(u)
     inner_prod  = [ (u' * v) for v in verts ]
     verts[argmax(inner_prod)]
 end
-
-
-
-
-
-
 
 
 
@@ -112,10 +142,6 @@ end
 
 
 
-
-
-
-
 function getV(w)
     w_new = Π'*w
     w_new  = w_new * 10000 + rand(-100:100, size(w_new))
@@ -136,45 +162,3 @@ V_new, F_new = update(V_old, F_old, getV_proj)
 verts, fcts, P = get_Polytope(V_0, getV)
 
 L_points  = lattice_points(P)
-
-
-function Horn_param(A, B, v, λ)
-    φλ = [prod(λ.^A[:,i]) for i in 1:n]
-    φλ.*(B*v)
-end
-
-
-function get_Vdm(pts, mons)
-    V = zeros(Complex{Float64}, (length(pts), length(mons)))
-    for i in 1:length(pts)
-        V[i, :] = [prod(pts[i].^m) for m in mons]
-        V[i, :] = V[i, :]/norm(V[i, :])
-    end
-    V
-end
-
-function interpolate_discr(A)
-    B =
-    P =
-    mons = lattice_points(P)
-    
-    n_pts = length(mons) * 2
-
-    V
-end
-pts = [Horn_param(A,B,randn(ComplexF64,n-d),randn(ComplexF64,d)) for j = 1:50]
-Π = Matrix{Int64}(Π)
-pts_proj = [[prod(p.^Π[i,:]) for i in 1:n-d] for p in pts]
-L_points = Vector{Int64}.(L_points)
-
-V = get_Vdm(pts_proj, L_points)
-nullspace(V)
-svd(V)
-
-x = pts[1]
-det([2*x[1] x[2] x[4]; x[2] 2*x[3] x[5]; x[4] x[5] 2*x[6]])
-
-for x in pts
-    println(abs(det([2*x[1] x[2] x[4]; x[2] 2*x[3] x[5]; x[4] x[5] 2*x[6]])
-))
-end
