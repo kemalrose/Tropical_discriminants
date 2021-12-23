@@ -94,7 +94,6 @@ end
 
 
 function get_Polytope(V_0, getVtx)
-    println("get_Polytope")
     V_old, F_old = [], []
     V_new  = copy(V_0)
     F_new = []
@@ -115,8 +114,6 @@ function update(V_old, F_old, getVtx)
     P = convex_hull(hcat(V_old...)')
     F_new  = [Vector{Int64}(f.a)  for f in facets(P)]
     keep_facets = []
-
-
 
     for a in setdiff(F_new, F_old)
         vert = getVtx(a)
