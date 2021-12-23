@@ -30,6 +30,7 @@ function interpolate_discr(A)
     U_inv  = Matrix{Int64}(inv(U))
 
 
+
     v_0, vtcs, fcts, Pol = newton_pol(A,B,Π)
     L_pts_proj = lattice_points(Pol)
     mons = [ U_inv * [v ; zeros(d)] + v_0 for v in Vector{Int64}.(L_pts_proj)]
@@ -57,8 +58,8 @@ end
 
 
 
-function newton_pol(A, B, Π)
-    d, n = size(A)
+function newton_pol(aux_data)
+    n, d, A, B = aux_data.n, aux_data.d, aux_data.A, aux_data.B
 
     matroid = Polymake.matroid.Matroid(VECTORS = B)
     ΣB = Polymake.tropical.matroid_fan{min}(matroid)
