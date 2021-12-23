@@ -1,6 +1,66 @@
 
 using Oscar
 
+function Horn_param(A, B, v, λ)
+    φλ = [prod(λ.^A[:,i]) for i in 1:n]
+    φλ.*(B*v)
+end
+
+function get_Vdm(pts, mons; normalize = true)
+    T = eltype(pts[1])
+    V = zeros(T, (length(pts), length(mons)))
+    for i in 1:length(pts)
+        V[i, :] = [prod(pts[i].^mon) for mon in mons]
+        if normalize
+            V[i, :] = V[i, :]/norm(V[i, :])
+        end
+    end
+    V
+end
+
+for mon in mons
+    println(mon)
+    x = prod(pts[25].^mon)
+end
+
+function interpolate_discr(A)
+    d, n = size(A)
+    S = MatrixSpace(ZZ, d, n)
+    B = nullspace(S(A))[2]
+    S,U,V = snf_with_transform(B)
+    Π = Matrix{Int64}(U[1:n-d, :])
+    A = Matrix{Int64}(A)
+    B = Matrix{Int64}(B)
+    U_inv  = Matrix{Int64}(inv(U))
+
+
+    v_0, vtcs, fcts, Pol = newton_pol(A,B,Π)
+    L_pts_proj = lattice_points(Pol)
+    mons = [ U_inv * [v ; zeros(d)] + v_0 for v in Vector{Int64}.(L_pts_proj)]
+    mons = [ [m.num for m in mon] for mon in mons]
+
+    pts = [Horn_param(A,B,randn(ComplexF64, n-d),randn(ComplexF64,d)) for j = 1:length(mons)*2]
+
+    V = get_Vdm(pts, mons)
+
+    U, sings, VV = svd(V)
+    coeff = VV[:, end]
+
+    max_val  = maximum(abs.(coeff))
+    coeff = coeff./ coeff[findfirst(k-> abs(coeff[k]) == max_val, 1:length(coeff))]
+    coeff = real.(coeff)
+
+
+    err_tol = sings[end]/sings[end-1] * 100
+    coeff = rationalize.(coeff, tol = err_tol)
+
+    @var a[1:n]
+    monomials = [prod(a.^mon) for mon in mons]
+    (coeff'monomials)[1], B, coeff, mons, err_tol
+end
+
+
+
 function newton_pol(A, B, Π)
     d, n = size(A)
 
@@ -28,7 +88,6 @@ function newton_pol(A, B, Π)
 
     v_0, vtcs, fcts, Pol
 end
-
 
 
 function get_Polytope(V_0, getVtx)
