@@ -18,10 +18,6 @@ function get_Vdm(pts, mons; normalize = true)
     V
 end
 
-for mon in mons
-    println(mon)
-    x = prod(pts[25].^mon)
-end
 
 function interpolate_discr(A)
     d, n = size(A)
@@ -71,7 +67,7 @@ function newton_pol(A, B, Π)
 
 
     V_0 = sampleRandom(Γ, dets, RR, Fσ, 2(n - d))
-    while dim(convex_hull(hcat(V_0...)')) != n - d
+    while Oscar.dim(convex_hull(hcat(V_0...)')) != n - d
         V_0 = sampleRandom(Γ, dets, RR, Fσ, 4(n - d))
     end
     #V_0 = [ [vi.num for vi in v] for v in V_0 ]
@@ -80,9 +76,16 @@ function newton_pol(A, B, Π)
 
     function getV(w)
         w_new = Π'*w
-            w_new  = w_new * 10000 + rand(-100:100, size(w_new))
+        w_new  = w_new * 10000 + rand(-100:100, size(w_new))
         vtx, flag = getVertex2(-w_new, Γ, dets, RR, Fσ)
-        Π * (vtx - v_0)
+        monomial = Π * (vtx - v_0)
+        if sum(vtx.<0)>0
+            println("Get negative exponents for weight w_new = $w_new.")
+            println("vtx = $vtx.")
+            println("w_proj = $w.")
+            println("monomial = $monomial.")
+        end
+        monomial
     end
     vtcs, fcts, Pol = get_Polytope(V_0, getV);
 
@@ -129,4 +132,27 @@ function update(V_old, F_old, getVtx)
     #println(V_new)
 
     copy(V_new), [copy(F_old); F_new[keep_facets]], P
+end
+
+
+function verify(disc, mons, coeff, A, B; strategy = "substitution")
+    d, n = size(A)
+    if strategy == "substitution"
+        @var λ[1:d], v[1:n-d]
+        φλ = [prod(λ.^A[:,i]) for i in 1:n]
+        Φ = φλ.*(B*v)
+        return expand(subs(disc, variables(disc) => Φ)) == 0
+    elseif strategy == "interpolation"
+        pts = [Horn_param(A,B,rand(-10:10, n-d)//10,rand(-10:10,d)//10) for j = 1:length(mons)*1.2]
+        pts = Vector{Rational{BigInt}}.(pts)
+        V = get_Vdm(pts, mons, normalize = false)
+        S = MatrixSpace(QQ, size(V,1), size(V,2))
+        if rank(S(V)) == size(V, 2) - 1
+            return norm(V * coeff) == 0
+        else
+            print("Vdm is not of full rank!")
+        end
+    else
+        print("Choose input strategy to either be substitution or interpolation")
+    end
 end

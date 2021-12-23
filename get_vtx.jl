@@ -61,6 +61,10 @@ function getVertex2(w, Γ, dets, RR, Fσ; warning = false)
             end
         end
     end
+    if sum(monomial.<0)>0
+        println("Get negative exponents for weight w = $w.")
+        println("monomial = $monomial.")
+    end
     monomial, flag
 end
 
