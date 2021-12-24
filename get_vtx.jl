@@ -69,12 +69,13 @@ function getVertex2(w, Γ, dets, RR, Fσ; warning = false)
 end
 
 
-function sampleRandom(Γ, dets, RR, Fσ, nsamples)
+function sampleRandom(data::Aux_data, nsamples)
+    Γ, dets, RR, Fσ = data.Γ, data.dets, data.RR, data.Fσ
     n = size(Γ,2)
     monomials = []
     for i = 1:nsamples
         w = rand(-10000:10000,n)
-        monomial, flag = getVertex2(w, Γ, dets, RR, Fσ)
+        monomial = getVertex(w, Γ, dets, RR, Fσ)
         if !flag
             monomials = unique!(push!(monomials,monomial))
         end
