@@ -28,41 +28,86 @@ function data_from_matrix(A::Matrix{Int})
     U = Matrix{Int64}(U)
     matroid = Polymake.matroid.Matroid(VECTORS = B)
     ΣB = Polymake.tropical.matroid_fan{min}(matroid)
-    #ΣB = Polymake.tropical.matroid_fan_from_flats{min}(matroid)
     Γ, dets, RR, Fσ = getConeData(A, ΣB)
     Aux_data(A, d, n, B, U, Π, Π_rinv, matroid, ΣB, Γ, dets, RR, Fσ)
 end
 
+if (prod(Fσ[j]*(RR[j]*x[1:size(RR[j],2)]) .== 0) == 1) || (x[end] == 0)
 
 
-function getVertex(w::Vector{T}, data::Aux_data{T}; warning = false)
+
+
+function cone_containments(w, data::Aux_data)
     Γ, dets, RR, Fσ, n = data.Γ, data.dets, data.RR, data.Fσ, data.n
-    w = MatrixSpace(QQ,n,1)(w)
+    is_contained = zeros(Int64,n, size(Γ, 1))
+    is_in_face = zeros(Int64, n, size(Γ, 1))
+    for i = 1:n
+        for j = 1:size(Γ,1)
+            if dets[j, i] != 0
+                x = Array(Γ[j,i])*Array(w)
+                vec = -Fσ[j]*(RR[j]*x[1:size(RR[j],2)])
+                coords = [x[end]; vec ]
+                if all(coords.≥0)
+                    is_contained[i, j] = 1
+                    if sum(coords.==0) > 0
+                        is_in_face[i, j] = 1
+                    end
+                end
+            end
+        end
+    end
+    is_contained, is_in_face
+end
+
+function getVertex(w, data::Aux_data; warning = false)
+    Γ, dets, RR, Fσ, n = data.Γ, data.dets, data.RR, data.Fσ, data.n
+
     monomial = zeros(fmpq,n)
-    flag = false
+    is_contained, is_in_face = cone_containments(w, data)
+    is_generic = sum(is_in_face) == 0
+
+    if !(is_generic)
+        println("w is not generic: w = $w")
+
+        w_new = 2000 * w + rand(-100:100, n)
+        println("w_new = $w_new")
+        is_contained_new, is_in_face_new = cone_containments(w_new, data)
+        if is_contained_new == is_contained
+            return getVertex(w_new, data::Aux_data; warning = false)
+        else
+            println("Perturbed w is not generic! w_new = $w_new")
+        end
+    end
+
     for i = 1:n
         for j = 1:size(Γ,1)
             if dets[j,i] != 0
-                x = Array(Γ[j,i]*w)
-                if minimum(abs.(x)) == 0
-                    if warning
-                        println("non-generic for w = $w!")
-                    end
-                    flag = true
-                end
-                if x[end] > 0 && prod(Fσ[j]*(RR[j]*x[1:size(RR[j],2)]) .< 0) == 1
+                if is_contained[i, j] == 1
                     monomial[i] += dets[j,i]
                 end
             end
         end
     end
-    if sum(monomial.<0)>0
-        println("Get negative exponents for weight w = $w.")
-        println("monomial = $monomial.")
-    end
+
     monomial, flag
 end
 
+data = data_from_matrix(A)
+count = 0
+for index in 1:100
+    vtx, flag  = getVertex( rand(-200:200, n), data ; warning = true)
+    if flag
+        count += 1
+    end
+end
+w = [94; 25; -57; 152; 83; -199]
+w_new = 2000 * w + rand(-100:100, n)
+getVertex( w, data)
+is_contained_new, is_in_face_new = cone_containments(w_new, data)
+is_contained, is_in_face = cone_containments(w, data)
+
+is_contained, is_in_face = cone_containments(rand(-200:200, n), data)
+sum(is_in_face)
 
 A = [0 1 0 1 2 1; 0 0 1 1 1 2; 1 1 1 1 1 1]
 
@@ -82,7 +127,6 @@ A = [1 1 1 1 1 1  1 1 1 1 1 1;
       0 1 2 0 1 0 0 1 2 0 1 0]
 
 
-data = data_from_matrix(A)
 
 
 

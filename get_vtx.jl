@@ -51,7 +51,7 @@ function getVertex2(w, Γ, dets, RR, Fσ; warning = false)
                 x = Array(Γ[j,i]*w)
                 if minimum(abs.(x)) == 0
                     if warning
-                        println("non-generic for w = $w!")
+                        println("non-generic for w = $w !")
                     end
                     flag = true
                 end
