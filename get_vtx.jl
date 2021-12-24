@@ -70,12 +70,23 @@ end
 
 
 function sampleRandom(data::Aux_data, nsamples)
+    n = size(Γ,2)
+    monomials = []
+    for i = 1:nsamples
+        w = rand(-10000:10000,n)
+        monomial = getVertex(w, data)
+        monomials = unique!(push!(monomials,monomial))
+    end
+    monomials
+end
+
+function sampleRandom2(data::Aux_data, nsamples)
     Γ, dets, RR, Fσ = data.Γ, data.dets, data.RR, data.Fσ
     n = size(Γ,2)
     monomials = []
     for i = 1:nsamples
         w = rand(-10000:10000,n)
-        monomial = getVertex(w, Γ, dets, RR, Fσ)
+        monomial, flag = getVertex2(w, Γ, dets, RR, Fσ)
         if !flag
             monomials = unique!(push!(monomials,monomial))
         end

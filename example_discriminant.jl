@@ -32,25 +32,42 @@ function data_from_matrix(A::Matrix{Int})
     Aux_data(A, d, n, B, U, Π, Π_rinv, matroid, ΣB, Γ, dets, RR, Fσ)
 end
 
-if (prod(Fσ[j]*(RR[j]*x[1:size(RR[j],2)]) .== 0) == 1) || (x[end] == 0)
 
+
+for i = 1:n
+    for j = 1:size(Γ,1)
+        if dets[j,i] != 0
+            x = Array(Γ[j,i]*w)
+            if minimum(abs.(x)) == 0
+                if warning
+                    println("non-generic for w = $w !")
+                end
+                flag = true
+            end
+            if x[end] > 0 && prod(Fσ[j]*(RR[j]*x[1:size(RR[j],2)]) .< 0) == 1
+                monomial[i] += dets[j,i]
+            end
+        end
+    end
+end
 
 
 
 function cone_containments(w, data::Aux_data)
-    Γ, dets, RR, Fσ, n = data.Γ, data.dets, data.RR, data.Fσ, data.n
-    is_contained = zeros(Int64,n, size(Γ, 1))
-    is_in_face = zeros(Int64, n, size(Γ, 1))
+    n = data.n
+    is_contained = zeros(Int64,n, size(data.Γ, 1))
+    is_in_face = zeros(Int64, n, size(data.Γ, 1))
     for i = 1:n
-        for j = 1:size(Γ,1)
-            if dets[j, i] != 0
-                x = Array(Γ[j,i])*Array(w)
-                vec = -Fσ[j]*(RR[j]*x[1:size(RR[j],2)])
-                coords = [x[end]; vec ]
-                if all(coords.≥0)
-                    is_contained[i, j] = 1
-                    if sum(coords.==0) > 0
-                        is_in_face[i, j] = 1
+        for j = 1:size(data.Γ,1)
+            if data.dets[j, i] != 0
+                x = Array(data.Γ[j,i])*Array(w)
+                if x[end]≥0
+                    vec = -data.Fσ[j]*(data.RR[j]*x[1:size(data.RR[j],2)])
+                    if all(vec.≥0)
+                        is_contained[i, j] = 1
+                        if sum(vec.==0) > 0 || x[end] > 0
+                            is_in_face[i, j] = 1
+                        end
                     end
                 end
             end
@@ -59,8 +76,8 @@ function cone_containments(w, data::Aux_data)
     is_contained, is_in_face
 end
 
-function getVertex(w, data::Aux_data; warning = false)
-    Γ, dets, RR, Fσ, n = data.Γ, data.dets, data.RR, data.Fσ, data.n
+function getVertex(w, data::Aux_data)
+    n = data.n
 
     monomial = zeros(fmpq,n)
     is_contained, is_in_face = cone_containments(w, data)
@@ -68,46 +85,30 @@ function getVertex(w, data::Aux_data; warning = false)
 
     if !(is_generic)
         println("w is not generic: w = $w")
-
         w_new = 2000 * w + rand(-100:100, n)
-        println("w_new = $w_new")
         is_contained_new, is_in_face_new = cone_containments(w_new, data)
-        if is_contained_new == is_contained
-            return getVertex(w_new, data::Aux_data; warning = false)
-        else
-            println("Perturbed w is not generic! w_new = $w_new")
+        while is_contained_new != is_contained
+            w_new = 2000 * w + rand(-100:100, n)
         end
+        is_contained = is_contained_new
     end
 
     for i = 1:n
-        for j = 1:size(Γ,1)
-            if dets[j,i] != 0
+        for j = 1:size(data.Γ,1)
+            if data.dets[j,i] != 0
                 if is_contained[i, j] == 1
-                    monomial[i] += dets[j,i]
+                    monomial[i] += data.dets[j,i]
                 end
             end
         end
     end
 
-    monomial, flag
+    monomial
 end
 
-data = data_from_matrix(A)
-count = 0
-for index in 1:100
-    vtx, flag  = getVertex( rand(-200:200, n), data ; warning = true)
-    if flag
-        count += 1
-    end
-end
-w = [94; 25; -57; 152; 83; -199]
-w_new = 2000 * w + rand(-100:100, n)
-getVertex( w, data)
-is_contained_new, is_in_face_new = cone_containments(w_new, data)
-is_contained, is_in_face = cone_containments(w, data)
 
-is_contained, is_in_face = cone_containments(rand(-200:200, n), data)
-sum(is_in_face)
+
+
 
 A = [0 1 0 1 2 1; 0 0 1 1 1 2; 1 1 1 1 1 1]
 
@@ -127,10 +128,22 @@ A = [1 1 1 1 1 1  1 1 1 1 1 1;
       0 1 2 0 1 0 0 1 2 0 1 0]
 
 
+data = data_from_matrix(A)
+V_0 = sampleRandom2(data, 5)
+V_0 = sampleRandom(data, 5)
+
+nsamples = 10
+n = data.n
+for i = 1:nsamples
+    w = rand(-10000:10000,n)
+    is_contained, is_in_face = cone_containments(w, data)
+    bool = sum(is_in_face.==1) == 0
+    println("is generic: $bool")
+    #monomial = getVertex(w, data)
+    #monomials = unique!(push!(monomials,monomial))
+end
 
 
-
-V_0 = sampleRandom(Γ, dets, RR, Fσ, 1000)
 P = convex_hull(hcat(V_0...)')
 v_0, vtcs, fcts, Pol = newton_pol(A, B, Π)
 disc, B, coeff, mons, err_tol = interpolate_discr(A)
@@ -139,110 +152,6 @@ verify(disc, mons, coeff, A, B; strategy = "interpolation")
 
 
 
-
-
-v_0, vtcs, fcts, Pol = newton_pol(A,B,Π)
-L_pts_proj = lattice_points(Pol)
-mons = [ U_inv * [v ; zeros(d)] + v_0 for v in Vector{Int64}.(L_pts_proj)]
-mons = [ [m.num for m in mon] for mon in mons]
-
-vtcs_proj = [ [m.num for m in mon] for mon in vtcs]
-verts_ambient = [ U_inv * [v ; zeros(d)] + v_0 for v in Vector{Int64}.(vtcs_proj)]
-P_ambient = convex_hull(hcat(verts_ambient...)')
-L_pts = lattice_points(P_ambient)
-
-
-indices = findall(l -> sum(l.<0)>0, verts_ambient )
-
-
-pts = [Horn_param(A,B,randn(ComplexF64, n-d),randn(ComplexF64,d)) for j = 1:length(mons)*2]
-
-V = get_Vdm(pts, mons)
-
-U, sings, VV = svd(V)
-coeff = VV[:, end]
-
-max_val  = maximum(abs.(coeff))
-coeff = coeff./ coeff[findfirst(k-> abs(coeff[k]) == max_val, 1:length(coeff))]
-coeff = real.(coeff)
-
-
-err_tol = sings[end]/sings[end-1] * 100
-coeff = rationalize.(coeff, tol = err_tol)
-
-@var a[1:n]
-monomials = [prod(a.^mon) for mon in mons]
-
-
-
-
-
-
-
-d, n = size(A)
-
-matroid = Polymake.matroid.Matroid(VECTORS = B)
-ΣB = Polymake.tropical.matroid_fan{min}(matroid)
-#ΣB = Polymake.tropical.matroid_fan_from_flats{min}(matroid)
-Γ, dets, RR, Fσ = getConeData(A, ΣB)
-
-
-V_0 = sampleRandom(Γ, dets, RR, Fσ, 2(n - d))
-while Oscar.dim(convex_hull(hcat(V_0...)')) != n - d
-    V_0 = sampleRandom(Γ, dets, RR, Fσ, 4(n - d))
-end
-#V_0 = [ [vi.num for vi in v] for v in V_0 ]
-v_0 = V_0[1]
-V_0 = [Π*(v - v_0) for v in V_0]
-
-function getV(w)
-    w_new = Π'*w
-    w_new  = w_new * 10000 + rand(-100:100, size(w_new))
-    vtx, flag = getVertex2(-w_new, Γ, dets, RR, Fσ)
-    monomial = Π * (vtx - v_0)
-    if sum(vtx.<0)>0
-        println("Get negative exponents for weight w_new = $w_new.")
-        println("vtx = $vtx.")
-        println("w_proj = $w.")
-        println("monomial = $monomial.")
-    end
-    monomial
-end
-
-
-println("get_Polytope")
-V_old, F_old = [], []
-V_new  = copy(V_0)
-F_new = []
-P = convex_hull(hcat(V_0...)')
-
-while size(V_old) != size(V_new)
-    V_old = copy(V_new)
-    F_old = copy(F_new)
-    #println("in while loop")
-    #println(V_old,F_old,getVtx)
-    V_new, F_new, P = update(V_old, F_old, getVtx)
-end
-return copy(V_new), F_new, P
-
-
-
-V_new = copy(V_old)
-P = convex_hull(hcat(V_old...)')
-F_new  = [Vector{Int64}(f.a)  for f in facets(P)]
-keep_facets = []
-
-for a in setdiff(F_new, F_old)
-    vert = getVtx(a)
-    if !in(vert, V_new)
-    #if setdiff(V_old,vert) == V_old
-        V_new = push!(V_new, vert)
-    else
-
-        index = findfirst(ℓ -> ℓ == a, F_new)
-        keep_facets = push!(keep_facets, index)
-    end
-end
 #println(V_new)
 #rand_verts  = sampleRandom(Γ, dets, RR, Fσ, 1000)
 #P = convex_hull(  hcat(rand_verts...)'  )
