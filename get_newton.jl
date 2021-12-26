@@ -1,9 +1,9 @@
 
 using Oscar
 
-function Horn_param(A, B, v, λ)
-    φλ = [prod(λ.^A[:,i]) for i in 1:n]
-    φλ.*(B*v)
+function Horn_param(data, v, λ)
+    φλ = [prod(λ.^data.A[:,i]) for i in 1:n]
+    φλ.*(data.B*v)
 end
 
 function get_Vdm(pts, mons; normalize = true)
@@ -58,40 +58,28 @@ end
 
 
 
-function newton_pol(aux_data)
-    n, d, A, B = aux_data.n, aux_data.d, aux_data.A, aux_data.B
-
-    matroid = Polymake.matroid.Matroid(VECTORS = B)
-    ΣB = Polymake.tropical.matroid_fan{min}(matroid)
-    #ΣB = Polymake.tropical.matroid_fan_from_flats{min}(matroid)
-    Γ, dets, RR, Fσ = getConeData(A, ΣB)
-
-
-    V_0 = sampleRandom(Γ, dets, RR, Fσ, 2(n - d))
-    while Oscar.dim(convex_hull(hcat(V_0...)')) != n - d
-        V_0 = sampleRandom(Γ, dets, RR, Fσ, 4(n - d))
+function newton_pol(data::Aux_data)
+    n, d = data.n, data.d
+    V_ambient = sampleRandom(data, 2(n - d))
+    while Oscar.dim(convex_hull(hcat(V_ambient...)')) != n - d
+        V_ambient = [V_ambient; sampleRandom(data,(n - d))]
     end
-    #V_0 = [ [vi.num for vi in v] for v in V_0 ]
-    v_0 = V_0[1]
-    V_0 = [Π*(v - v_0) for v in V_0]
+    #V_ambient = [ [vi.num for vi in v] for v in V_ambient ]
+    v_0 = V_ambient[1]
+    V_0 = [data.Π*(v - v_0) for v in V_ambient]
 
     function getV(w)
-        w_new = Π'*w
+        w_new = data.Π'*w
         w_new  = w_new * 10000 + rand(-100:100, size(w_new))
-        vtx, flag = getVertex2(-w_new, Γ, dets, RR, Fσ)
-        monomial = Π * (vtx - v_0)
-        if sum(vtx.<0)>0
-            println("Get negative exponents for weight w_new = $w_new.")
-            println("vtx = $vtx.")
-            println("w_proj = $w.")
-            println("monomial = $monomial.")
-        end
+        vtx = getVertex(-w_new, data)
+        monomial = data.Π * (vtx - v_0)
         monomial
     end
     vtcs, fcts, Pol = get_Polytope(V_0, getV);
 
     v_0, vtcs, fcts, Pol
 end
+
 
 
 function get_Polytope(V_0, getVtx)
