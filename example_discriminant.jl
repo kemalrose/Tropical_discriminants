@@ -27,9 +27,14 @@ A =      [ 1 1 1 1 0 0 0 0;
 
 data = data_from_matrix(A)
 
-disc, intcoeff, coeff, mons, err_tol = interpolate_discr(A)
+v_0, vtcs, fcts, Pol = newton_pol(data)
+
+disc, intcoeff, coeff, mons, err_tol = interpolate_discr(A; interpolation_method = "eigs")
 
 verify(disc, mons, coeff, data; strategy = "interpolation")
+
+
+
 
 #nsamples = 20
 #n = data.n

@@ -40,6 +40,7 @@ function cone_containments(w, data::Aux_data)
     n = data.n
     is_contained = zeros(Int64,n, size(data.Γ, 1))
     is_in_face = zeros(Int64, n, size(data.Γ, 1))
+    is_interiour = zeros(Int64, n, size(data.Γ, 1))
     for i = 1:n
         for j = 1:size(data.Γ,1)
             if data.dets[j, i] != 0
@@ -56,7 +57,7 @@ function cone_containments(w, data::Aux_data)
             end
         end
     end
-    is_contained, is_in_face
+    is_contained, is_in_face, is_interiour
 end
 
 
@@ -71,8 +72,9 @@ function getVertex(w, data::Aux_data)
         println("w is not generic: w = $w")
         w_new = 2000 * w + rand(-100:100, n)
         is_contained_new, is_in_face_new = cone_containments(w_new, data)
-        while is_contained_new != is_contained
+        while sum((is_contained_new - is_contained).>0) != 0
             w_new = 2000 * w + rand(-100:100, n)
+            is_contained_new, is_in_face_new = cone_containments(w_new, data)
         end
         is_contained = is_contained_new
     end
