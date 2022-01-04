@@ -31,10 +31,6 @@ function data_from_matrix(A::Matrix{Int})
     Aux_data(A, d, n, B, U, Π, Π_rinv, matroid, ΣB, Γ, dets, RR, Fσ)
 end
 
-
-
-
-
 function cone_containments(w, data::Aux_data)
     w_mat = MatrixSpace(QQ,data.n,1)(w)
     n = data.n

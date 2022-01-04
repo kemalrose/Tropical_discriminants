@@ -106,32 +106,51 @@ end
 
 
 
-
-function interpolate_discr(A; interpolation_method = "SVD")
+function interpolate_discr(A; interpolation_method = "SVD", redundancy_factor = 1.2, sample_method = "Horn", T = Float64)
     data = data_from_matrix(A)
-    n, d = data.n, data.d
-
+    d, n,  = data.d, data.n
     println("1. Compute the Newton polytope P of the discriminant")
-    v_0, vtcs, fcts, Pol = newton_pol(data)
+    @time v_0, vtcs, fcts, Pol = newton_pol(data)
+    println("-----------------------------------------------------------------")
 
     println("2. Find its lattice points")
-    L_pts_proj = lattice_points(Pol)
-
+    @time L_pts_proj = lattice_points(Pol)
     println("   P has $(length(L_pts_proj)) lattice points")
-    mons = [ data.Π_rinv * v + v_0 for v in Vector{Int64}.(L_pts_proj)]
+    println("   lifting the lattice points in $(n-d)-space to $(n)-space... ")
+    @time mons = [ data.Π_rinv * v + v_0 for v in Vector{Int64}.(L_pts_proj)]
     mons = [ [m.num for m in mon] for mon in mons]
+    println("-----------------------------------------------------------------")
 
     println("3. Construct the interpolation problem")
-    pts = [Horn_param(data,randn(ComplexF64, n-d),randn(ComplexF64,d)) for j = 1:convert(Int64,round(length(mons)*1.2))]
-    V = get_Vdm(pts, mons)
+    if sample_method == "Horn"
+        println("   points from Horn uniformization...")
+        @time pts = [Horn_param(data,convert.(Complex{T},randn(ComplexF64, n-d)),convert.(Complex{T},exp.(2*pi*im*rand(d)))) for j = 1:convert(Int64,round(length(mons)*redundancy_factor))]
+        pts = [pt/maximum(abs.(pt)) for pt ∈ pts]
+    elseif sample_method == "monodromy"
+        @time pts = sample_disc(A,convert(Int64,round(length(mons)*redundancy_factor)))
+        pts = [pt/maximum(abs.(pt)) for pt ∈ pts]
+    else println("choose sample_method = Horn or monodromy")
+    end
+    println("-----------------------------------------------------------------")
+
+    println("   constructing Vandermonde matrix...")
+    @time V = get_Vdm(pts, mons)
     println("   Constructed a Vandermonde matrix of size $(size(V))")
+    println("-----------------------------------------------------------------")
 
     println("4. Find floating point coefficients...")
     if interpolation_method == "SVD"
         println("   ... using SVD")
-        U, sings, VV = svd(V)
+        #println(typeof(V))
+        @time U, sings, VV = svd(V)
         coeff = VV[:, end]
+        #println(round.(log10.(sings)))
         err_tol = sings[end]/sings[end-1] * 100
+        println(sings[end])
+        println(sings[end-1])
+        if sings[end] == 0.0
+            err_tol = eps(T)/sings[end-1] * 100
+        end
     elseif interpolation_method == "eigs"
         println("   ... using eigs")
         VtV = V' * V
@@ -142,14 +161,49 @@ function interpolate_discr(A; interpolation_method = "SVD")
     else
         println("Choose interpolation_method to be either SVD or eigs.")
     end
+    println("-----------------------------------------------------------------")
 
     println("5. Rationalizing with tolerance $(err_tol)")
     nonzinds = findall(ℓ->abs(ℓ)>err_tol, coeff)
-    coeff = coeff/coeff[findfirst(ℓ->abs(ℓ) == minimum(abs.(coeff[nonzinds])),coeff)]
-    intcoeff = convert.(Int64,round.(real.(coeff)))
-    #coeff = rationalize.(coeff, tol = err_tol)
+    newcoeff = coeff/coeff[findfirst(ℓ->abs(ℓ) == minimum(abs.(coeff[nonzinds])),coeff)]
+    ratcoeff = rationalize.(Float64.(real.(newcoeff)), tol = err_tol/minimum(abs.(coeff[nonzinds])))
+    #intcoeff = coeff
+    #coeff = coeff/coeff[findfirst(ℓ->abs(ℓ) == maximum(abs.(coeff)),coeff)]
+    #ratcoeff = rationalize.(Float64.(real.(coeff)), tol = err_tol)
 
     @var a[1:n]
     monomials = [prod(a.^mon) for mon in mons]
-    (intcoeff'monomials)[1], intcoeff, coeff, mons, err_tol
+    Δ = (ratcoeff'monomials)[1]
+    #println(norm(System([Δ])(pts[1])))
+    (ratcoeff'monomials)[1], ratcoeff, coeff, mons, err_tol, data
+end
+
+
+
+function sample_disc(A,nsamples)
+    d,n = size(A)
+    @var x[1:d] a[1:n] b[1:n-1,1:n] c[1:n-1]
+    f = sum([a[i]*prod(x.^A[:,i]) for i = 1:n])
+    L = b*a + c
+    sys = System([subs(differentiate(f,x),x[1]=>1);L], variables = [a;x[2:end]], parameters = [b[:];c])
+    # assume d < n, so that each point x can be a singularity
+    xx = exp.(2*pi*im*rand(d-1))
+    C = convert.(ComplexF64,jacobian(System(subs(differentiate(f,x),x=>[1;xx]),variables = a)))
+    U,S,V = svd(C,full = true)
+    #println(size(C))
+    #println(U*diagm(S)*V-C)
+    a_start = V[:,end]
+    b_start = randn(n-1,n)
+    c_start = - b_start*a_start
+    monres = monodromy_solve(sys,[[a_start;xx]],[b_start[:];c_start])
+    samples = [sol[1:length(a)] for sol ∈ solutions(monres)]
+    startsols = solutions(monres)
+    startparams = parameters(monres)
+    while length(samples) < nsamples
+        targetparams = randn(ComplexF64,length(startparams))
+        R = HomotopyContinuation.solve(sys,startsols; target_parameters = targetparams, start_parameters = startparams)
+        samples = vcat(samples, [sol[1:length(a)] for sol ∈ solutions(R)])
+        println("found $(length(samples)) samples. ")
+    end
+    samples
 end
