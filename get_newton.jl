@@ -106,7 +106,6 @@ end
 
 
 
-function interpolate_discr(A; interpolation_method = "SVD", redundancy_factor = 1.2, sample_method = "Horn", T = Float64)
     data = data_from_matrix(A)
     d, n,  = data.d, data.n
     println("1. Compute the Newton polytope P of the discriminant")
@@ -166,7 +165,7 @@ function interpolate_discr(A; interpolation_method = "SVD", redundancy_factor = 
     println("5. Rationalizing with tolerance $(err_tol)")
     nonzinds = findall(ℓ->abs(ℓ)>err_tol, coeff)
     newcoeff = coeff/coeff[findfirst(ℓ->abs(ℓ) == minimum(abs.(coeff[nonzinds])),coeff)]
-    ratcoeff = rationalize.(Float64.(real.(newcoeff)), tol = err_tol/minimum(abs.(coeff[nonzinds])))
+    ratcoeff = rationalize.(BigFloat.(real.(newcoeff)), tol = err_tol/minimum(abs.(coeff[nonzinds])))
     #intcoeff = coeff
     #coeff = coeff/coeff[findfirst(ℓ->abs(ℓ) == maximum(abs.(coeff)),coeff)]
     #ratcoeff = rationalize.(Float64.(real.(coeff)), tol = err_tol)
