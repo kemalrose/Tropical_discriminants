@@ -104,8 +104,53 @@ function verify(disc, mons, coeff, data; strategy = "substitution")
 end
 
 
+function interpolate_discr_finitely(A; p = 11, k = 1, redundancy_factor = 7)
+    data = data_from_matrix(A)
+    d, n,  = data.d, data.n
+    F, x = FlintFiniteField(p, k)
+
+    println("1. Compute the Newton polytope P of the discriminant")
+    @time v_0, vtcs, fcts, Pol = newton_pol(data)
+    println("-----------------------------------------------------------------")
+
+    println("2. Find its lattice points")
+    @time L_pts_proj = lattice_points(Pol)
+    println("   P has $(length(L_pts_proj)) lattice points")
+    println("   lifting the lattice points in $(n-d)-space to $(n)-space... ")
+    @time mons = [ data.Π_rinv * v + v_0 for v in Vector{Int64}.(L_pts_proj)]
+    mons = [ [m.num for m in mon] for mon in mons]
+    println("-----------------------------------------------------------------")
+
+    println("3. Construct the interpolation problem")
+    println("   points from Horn uniformization...")
+
+    @time pts = [Horn_param(data,F.(rand(1:p^k, n-d)),F.(rand(1:p^k, d))) for j = 1:convert(Int64,round(length(mons)*redundancy_factor))]
+    println("-----------------------------------------------------------------")
+    println("   constructing Vandermonde matrix...")
+    V = F.(zeros(Int64, (length(pts), length(mons))))
+    for i in 1:length(pts)
+        V[i, :] = [prod(pts[i].^mon) for mon in mons]
+    end
+    V = MatrixSpace(F, size(V, 1), size(V, 2))(V)
+
+    println("   Constructed a Vandermonde matrix of size $(size(V))")
+    println("-----------------------------------------------------------------")
 
 
+    println("4. Find coefficients mod $p^$k...")
+    coeff = kernel(V)[2]
+    if size(coeff, 2) > 1
+        print("Vdm matrix has too large kernel")
+    end
+    #println(typeof(V))
+
+    println("-----------------------------------------------------------------")
+
+    coeff, mons, F
+end
+
+
+function interpolate_discr(A; interpolation_method = "SVD", T = Float64, sample_method = "Horn", redundancy_factor = 1.2)
     data = data_from_matrix(A)
     d, n,  = data.d, data.n
     println("1. Compute the Newton polytope P of the discriminant")
