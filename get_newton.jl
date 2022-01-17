@@ -1,8 +1,7 @@
 
-using Oscar
 
 function Horn_param(data, v, λ)
-    φλ = [prod(λ.^data.A[:,i]) for i in 1:n]
+    φλ = [prod(λ.^data.A[:,i]) for i in 1:data.n]
     φλ.*(data.B*v)
 end
 
@@ -16,6 +15,11 @@ function get_Vdm(pts, mons; normalize = true)
         end
     end
     V
+end
+
+function newton_pol(A)
+    data = data_from_matrix(A)
+    newton_pol(data)
 end
 
 
@@ -150,9 +154,9 @@ function interpolate_discr_finitely(A; p = 11, k = 1, redundancy_factor = 7)
 end
 
 
-function interpolate_discr(A; interpolation_method = "SVD", T = Float64, sample_method = "Horn", redundancy_factor = 1.2)
+function interpolate_discr(A; interpolation_method = "SVD", T = Float64x2, sample_method = "Horn", redundancy_factor = 1.2)
     data = data_from_matrix(A)
-    d, n,  = data.d, data.n
+    d, n  = data.d, data.n
     println("1. Compute the Newton polytope P of the discriminant")
     @time v_0, vtcs, fcts, Pol = newton_pol(data)
     println("-----------------------------------------------------------------")
@@ -168,7 +172,7 @@ function interpolate_discr(A; interpolation_method = "SVD", T = Float64, sample_
     println("3. Construct the interpolation problem")
     if sample_method == "Horn"
         println("   points from Horn uniformization...")
-        @time pts = [Horn_param(data,convert.(Complex{T},randn(ComplexF64, n-d)),convert.(Complex{T},exp.(2*pi*im*rand(d)))) for j = 1:convert(Int64,round(length(mons)*redundancy_factor))]
+        @time pts = [Horn_param(data,convert.(Complex{T},randn(ComplexF64, data.n-data.d)),convert.(Complex{T},exp.(2*pi*im*rand(data.d)))) for j = 1:convert(Int64,round(length(mons)*redundancy_factor))]
         pts = [pt/maximum(abs.(pt)) for pt ∈ pts]
     elseif sample_method == "monodromy"
         @time pts = sample_disc(A,convert(Int64,round(length(mons)*redundancy_factor)))
@@ -215,11 +219,11 @@ function interpolate_discr(A; interpolation_method = "SVD", T = Float64, sample_
     #coeff = coeff/coeff[findfirst(ℓ->abs(ℓ) == maximum(abs.(coeff)),coeff)]
     #ratcoeff = rationalize.(Float64.(real.(coeff)), tol = err_tol)
 
-    @var a[1:n]
+    @var a[1:data.n]
     monomials = [prod(a.^mon) for mon in mons]
     Δ = (ratcoeff'monomials)[1]
     #println(norm(System([Δ])(pts[1])))
-    (ratcoeff'monomials)[1], ratcoeff, coeff, mons, err_tol, data
+    Δ, ratcoeff, coeff, mons, err_tol, data
 end
 
 
