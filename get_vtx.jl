@@ -147,3 +147,11 @@ function index(A::Matrix{Int}, S=AbstractAlgebra.snf(matrix(ZZ, A)))
     end
     prod( [S[i,i] for i in 1:n] )
 end
+
+function reparameterise(A)
+    rk = rank(A)
+    d, n = size(A)
+    S,T,U = AbstractAlgebra.snf_with_transform(matrix(ZZ, A))
+    TT = Matrix{Int64}(Matrix(inv(T)))
+    hcat(TT[:, 1:rk], zeros(Int64, (d, n-rk)) ) * Matrix{Int64}(Matrix(inv(U)))
+end
