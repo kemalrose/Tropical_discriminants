@@ -1,25 +1,21 @@
-
+R = QQ[x, y, t]
+f = 10^5 * t^2 + 10^5*t + 100
+g = 1/100 * t^2 + 100 * t + 10
+I = ideal(x - f, y - g)
+eliminate(I, t)
+F = x^2  - 20000000x*y + 100000000000000y^2   -9999800000200x - 1999998000000000y + 10999980000010000
+expand(subs(F, [x, y] => [f, g]))
 
 R = QQ[x, y, t]
-f = 10^5 * t^2 + 10^5 * t + 100
-g = 1/100 * t^2 + 100 * t + 10
+f = 10^2 * t^2 + 10^(-2) * t + 10^(-7)
+g = 10^(4) * t^2 - t + 10^(-5)
 I = ideal(x - f, y - g)
 eliminate(I, t)
 
 
 
-
-
-ideal(x^2  - 20000000x*y + 100000000000000y^2  - 9998800000200x +7999002000000000y - 88990119999990000)
-
-
-τf = u^5*t^2 + u^5*t + u^2
-τg = 1/u^2*t^2 + u^2 * t + u
-τF = ?
-
-
-
-using Plots
+ideal(x^2  - 20000000x*y + 100000000000000y^2 
+- 9998800000200x +7999002000000000y - 88990119999990000)
 
 
 function xx(a)
@@ -33,7 +29,7 @@ end
 as = -10:0.01:10
 
 
-plot(xx.(as),yy.(as))
+plot!(xx.(as),yy.(as))
 
 
 function ϕ(a)
@@ -48,9 +44,21 @@ vals2 = log10.(abs.((transpose(hcat(ψ.(as)...)))));
 scatter!(vals2[:,1],vals2[:,2],markersize = 1.1, color = "blue")
 
 
-n = 5000
-x, y = sample_from_trop(affine_lin_fcts, 10000)
-scatter(x, y, markersize = 1.1, markercolor = :green, markerstrokewidth = 0.5)
+
+
+pt = [xx.(as)[1900],yy.(as)[1900]]
+affine_lin_fcts =
+[(log10(1), [2,0]),
+(log10(20000000) -0.3, [1,1]),
+(log10(100000000000000), [0,2]),
+(log10(9998980000200), [1,0]),
+(log10(7999002000000000), [0,1]),
+(log10(88990119999990000), [0, 0])]
+
+
+
+
+
 
 function sample_from_trop(affine_lin_fcts, n)
     pts = []
@@ -84,18 +92,25 @@ v1 = [log10(BigFloat(1)),2,0]
 v2 = [log10(BigFloat(20000000)),1,1]
 v3 = [log10(BigFloat(100000000000000)),0,2]
 
-affine_lin_fcts = affine_lin_fcts[[1,3]]
-det(hcat(v2-v1,v3-v1)[1:end.!=2,:])
+n = 5000
+x, y = sample_from_trop(affine_lin_fcts, 10000)
+scatter(x, y, markersize = 1.1, markercolor = :green, markerstrokewidth = 0.5)
+scatter!(vals2[:,1],vals2[:,2],markersize = 1.1, color = "blue")
+plot!(xx.(as),yy.(as))
 
 
-pt = [xx.(as)[1900],yy.(as)[1900]]
-affine_lin_fcts =
-[(log10(1), [2,0]),
-(log10(20000000) -0.3, [1,1]),
-(log10(100000000000000), [0,2]),
-(log10(9998980000200), [1,0]),
-(log10(7999002000000000), [0,1]),
-(log10(88990119999990000), [0, 0])]
 
-x^2  - 20000000*x*y + 100000000000000*y^2  - c*x +
+
+
+
+
+@polyvar x y
+f = x^2*y + exp(1)*y^2 + exp(4)*x^2*y^3 + exp(-4)*y^4 + exp(2)*x^4*y^4
+A = amoeba(f);
+plot(A)
+amoeba_spine_plot = plot!(spine(f))
+
+
+f = x^2  - 20000000*x*y + 100000000000000*y^2  - 9998800000200*x +
  9799002000000000*y - 8899101999990000
+
