@@ -29,14 +29,6 @@ function trop_pols(root_list)
     #Polymake.Shell.vals = Polymake.Vector{Polymake.Rational}(vals)
     matroid = Polymake.matroid.Matroid(VECTORS = B)
 
-#    circs = [[c+1 for c in circ] for circ in matroid.CIRCUITS]
-#    matroid_val = Polymake.matroid.ValuatedMatroid{min}(BASES = matroid.BASES, VALUATION_ON_BASES = Polymake.Shell.vals)
-
- #   cycle = Polymake.tropical.MatroidRingCycle{min}(matroid_val)
- #   ΣB = Polymake.tropical.matroid_fan{min}(matroid)
- #   maxpols = ΣB.MAXIMAL_POLYTOPES
- #   rays = [transpose(ΣB.RAYS[findall(ℓ->ℓ,maxpols[j,:])[1:end-1],2:end-1]) for j in 1:length(root_list)]
- #   rays
     trop_circ_pol = []
     for j in 1:length(circs)
         circ = circs[j]
@@ -50,13 +42,6 @@ function trop_pols(root_list)
     end
     trop_circ_pol
 end
-
-
-
-
-
-
-
 
 A = hcat(ones(fmpq,length(root_list)), root_list)
 A = matrix(vcat(A, [0 1]))

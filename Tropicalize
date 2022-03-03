@@ -1,9 +1,0 @@
-
-
-
-print("Sascha's stuff:")
-@polyvar x y
-f = x^2*y + exp(1)*y^2 + exp(4)*x^2*y^3 + exp(-4)*y^4 + exp(2)*x^4*y^4
-A = amoeba(f);
-plot(A)
-amoeba_spine_plot = plot!(spine(f))
