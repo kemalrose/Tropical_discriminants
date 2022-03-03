@@ -1,6 +1,5 @@
 
 
-
 struct Aux_data{T}
     A::Matrix{T}            # Input matrix. Full rank and all ones vector is in rowspan.
     d::Int              # number of rows of A
