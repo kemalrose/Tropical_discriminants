@@ -2,10 +2,30 @@ using Oscar
 using DynamicPolynomials
 using Plots, Statistics
 
+
+function angle(v1, v2)
+    inner = dot(v1, v2)
+    if inner < 1
+        inner  += 0.001
+    elseif inner > 1
+        inner -= 0.001
+    end
+    alpha = acos( inner )
+    if dot([v1[2], -v1[1]], v2) < 0
+        alpha = 2*π - alpha
+    end
+    alpha
+end
+
 function orderVtcs(vtcs)
     meanvert = mean(vtcs,dims=1)
-    diffvecs = vtcs.-meanvert
-    per = sortperm([ atan( diffvecs[i,2]/diffvecs[i,1])^(-1) for i ∈ 1:size(diffvecs,1)])
+    diffvecs = Float64.(vtcs.-meanvert)
+    for i in 1:size(diffvecs, 1)
+        diffvecs[i, :] = diffvecs[i, :] / norm(diffvecs[i, :])
+    end
+    angles = [ angle(diffvecs[1, :], diffvecs[i, :])  for i ∈ 1:size(diffvecs,1)]
+    per = sortperm(angles)
+
     return vtcs[per,:]
 end
 
