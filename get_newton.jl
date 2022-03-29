@@ -1,8 +1,7 @@
 
-using Oscar
 
 function Horn_param(data, v, λ)
-    φλ = [prod(λ.^data.A[:,i]) for i in 1:n]
+    φλ = [prod(λ.^data.A[:,i]) for i in 1:data.n]
     φλ.*(data.B*v)
 end
 
@@ -18,11 +17,16 @@ function get_Vdm(pts, mons; normalize = true)
     V
 end
 
+function newton_pol(A)
+    data = data_from_matrix(A)
+    newton_pol(data)
+end
+
 
 function newton_pol(data::Aux_data)
     n, d = data.n, data.d
     V_ambient = sampleRandom(data, 2(n - d))
-    while Oscar.dim(convex_hull(hcat(V_ambient...)')) != n - d
+    while Oscar.dim(convex_hull(transpose(hcat(V_ambient...)))) != n - d
         V_ambient = unique!([V_ambient; sampleRandom(data,(n - d))])
     end
     #V_ambient = [ [vi.num for vi in v] for v in V_ambient ]
@@ -47,7 +51,7 @@ function get_Polytope(V_0, getVtx)
     V_old, F_old = [], []
     V_new  = copy(V_0)
     F_new = []
-    P = convex_hull(hcat(V_0...)')
+    P = convex_hull(transpose(hcat(V_0...)))
 
     while size(V_old) != size(V_new)
         V_old = copy(V_new)
@@ -61,8 +65,8 @@ end
 
 function update(V_old, F_old, getVtx)
     V_new = copy(V_old)
-    P = convex_hull(hcat(V_old...)')
-    F_new  = [Vector{Int64}(f.a)  for f in facets(P)]
+    P = convex_hull(transpose(hcat(V_old...)))
+    F_new  = [Vector{Int64}(f.a)  for f in Oscar.facets(P)]
     keep_facets = []
 
     for a in setdiff(F_new, F_old)
@@ -104,10 +108,55 @@ function verify(disc, mons, coeff, data; strategy = "substitution")
 end
 
 
-
-
+function interpolate_discr_finitely(A; p = 11, k = 1, redundancy_factor = 7)
     data = data_from_matrix(A)
     d, n,  = data.d, data.n
+    F, x = FlintFiniteField(p, k)
+
+    println("1. Compute the Newton polytope P of the discriminant")
+    @time v_0, vtcs, fcts, Pol = newton_pol(data)
+    println("-----------------------------------------------------------------")
+
+    println("2. Find its lattice points")
+    @time L_pts_proj = lattice_points(Pol)
+    println("   P has $(length(L_pts_proj)) lattice points")
+    println("   lifting the lattice points in $(n-d)-space to $(n)-space... ")
+    @time mons = [ data.Π_rinv * v + v_0 for v in Vector{Int64}.(L_pts_proj)]
+    mons = [ [m.num for m in mon] for mon in mons]
+    println("-----------------------------------------------------------------")
+
+    println("3. Construct the interpolation problem")
+    println("   points from Horn uniformization...")
+
+    @time pts = [Horn_param(data,F.(rand(1:p^k, n-d)),F.(rand(1:p^k, d))) for j = 1:convert(Int64,round(length(mons)*redundancy_factor))]
+    println("-----------------------------------------------------------------")
+    println("   constructing Vandermonde matrix...")
+    V = F.(zeros(Int64, (length(pts), length(mons))))
+    for i in 1:length(pts)
+        V[i, :] = [prod(pts[i].^mon) for mon in mons]
+    end
+    V = MatrixSpace(F, size(V, 1), size(V, 2))(V)
+
+    println("   Constructed a Vandermonde matrix of size $(size(V))")
+    println("-----------------------------------------------------------------")
+
+
+    println("4. Find coefficients mod $p^$k...")
+    coeff = kernel(V)[2]
+    if size(coeff, 2) > 1
+        print("Vdm matrix has too large kernel")
+    end
+    #println(typeof(V))
+
+    println("-----------------------------------------------------------------")
+
+    coeff, mons, F
+end
+
+
+function interpolate_discr(A; interpolation_method = "SVD", T = Float64x2, sample_method = "Horn", redundancy_factor = 1.2)
+    data = data_from_matrix(A)
+    d, n  = data.d, data.n
     println("1. Compute the Newton polytope P of the discriminant")
     @time v_0, vtcs, fcts, Pol = newton_pol(data)
     println("-----------------------------------------------------------------")
@@ -123,7 +172,7 @@ end
     println("3. Construct the interpolation problem")
     if sample_method == "Horn"
         println("   points from Horn uniformization...")
-        @time pts = [Horn_param(data,convert.(Complex{T},randn(ComplexF64, n-d)),convert.(Complex{T},exp.(2*pi*im*rand(d)))) for j = 1:convert(Int64,round(length(mons)*redundancy_factor))]
+        @time pts = [Horn_param(data,convert.(Complex{T},randn(ComplexF64, data.n-data.d)),convert.(Complex{T},exp.(2*pi*im*rand(data.d)))) for j = 1:convert(Int64,round(length(mons)*redundancy_factor))]
         pts = [pt/maximum(abs.(pt)) for pt ∈ pts]
     elseif sample_method == "monodromy"
         @time pts = sample_disc(A,convert(Int64,round(length(mons)*redundancy_factor)))
@@ -170,11 +219,11 @@ end
     #coeff = coeff/coeff[findfirst(ℓ->abs(ℓ) == maximum(abs.(coeff)),coeff)]
     #ratcoeff = rationalize.(Float64.(real.(coeff)), tol = err_tol)
 
-    @var a[1:n]
+    @var a[1:data.n]
     monomials = [prod(a.^mon) for mon in mons]
     Δ = (ratcoeff'monomials)[1]
     #println(norm(System([Δ])(pts[1])))
-    (ratcoeff'monomials)[1], ratcoeff, coeff, mons, err_tol, data
+    Δ, ratcoeff, coeff, mons, err_tol, data
 end
 
 
